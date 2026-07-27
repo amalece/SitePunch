@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Attendance{% endblock %}
+{% block content %}
+
+<div class="page-title">Daily Attendance</div>
+<div class="page-sub">Mark status, then fill in times for anyone present.</div>
+
+<form method="GET" action="{{ url_for('attendance') }}" class="filter-bar" id="filterForm">
+  <div class="field">
+    <label for="date">Date</label>
+    <input type="date" id="date" name="date" value="{{ selected_date }}" onchange="document.getElementById('filterForm').submit()">
+  </div>
+  <div class="field">
+    <label for="site_id">Site</label>
+    <select id="site_id" name="site_id" onchange="document.getElementById('filterForm').submit()">
+      {% for s in sites %}
+      <option value="{{ s.id }}" {{ 'selected' if s.id == selected_site_id }}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+
+{% if not sites %}
+<div class="empty-state">
+  <div class="icon">&#8962;</div>
+  No sites set up yet. <a href="{{ url_for('sites') }}" style="color:var(--accent);">Add a site</a> first.
+</div>
+{% elif not employees %}
+<div class="empty-state">
+  <div class="icon">&#128100;</div>
+  No employees assigned to this site. <a href="{{ url_for('employees') }}" style="color:var(--accent);">Add employees</a>.
+</div>
+{% else %}
+
+<form method="POST" action="{{ url_for('attendance_save') }}" id="attendanceForm">
+  <input type="hidden" name="date" value="{{ selected_date }}">
+  <input type="hidden" name="site_id" value="{{ selected_site_id }}">
+
+  <div class="bulk-row">
+    <button type="button" class="btn btn-sm" onclick="markAll('present')">Mark all present</button>
+    <button type="button" class="btn btn-sm" onclick="markAll('weekly_off')">Mark all weekly off</button>
+  </div>
+
+  {% for emp in employees %}
+  {% set rec = existing.get(emp.id) %}
+  {% set status = rec.status if rec else 'present' %}
+  <div class="emp-row" data-emp="{{ emp.id }}">
+    <div class="emp-name">{{ emp.name }}{% if emp.employee_code %} <span class="mono" style="color:var(--text-dim); font-weight:500; font-size:13px;">({{ emp.employee_code }})</span>{% endif %}</div>
+    <div class="emp-meta">{{ emp.designation or 'No designation' }} · Std. {{ emp.standard_hours }} hrs/day</div>
+
+    <div class="status-group" data-emp-group="{{ emp.id }}">
+      <div class="status-btn {{ 'sel-present' if status=='present' }}" data-status="present" onclick="setStatus({{ emp.id }}, 'present')">Present</div>
+      <div class="status-btn {{ 'sel-absent' if status=='absent' }}" data-status="absent" onclick="setStatus({{ emp.id }}, 'absent')">Absent</div>
+      <div class="status-btn {{ 'sel-leave' if status=='leave' }}" data-status="leave" onclick="setStatus({{ emp.id }}, 'leave')">Leave</div>
+      <div class="status-btn {{ 'sel-holiday' if status=='holiday' }}" data-status="holiday" onclick="setStatus({{ emp.id }}, 'holiday')">Holiday</div>
+      <div class="status-btn {{ 'sel-weekly_off' if status=='weekly_off' }}" data-status="weekly_off" onclick="setStatus({{ emp.id }}, 'weekly_off')">Off</div>
+    </div>
+    <input type="hidden" name="status_{{ emp.id }}" id="status_input_{{ emp.id }}" value="{{ status }}">
+
+    <div class="time-row {{ '' if status=='present' else 'hidden' }}" id="time_row_{{ emp.id }}">
+      <div class="field" style="margin-bottom:0;">
+        <label>Start</label>
+        <input type="time" name="start_{{ emp.id }}" value="{{ rec.start_time if rec and rec.start_time else '07:00' }}">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>End</label>
+        <input type="time" name="end_{{ emp.id }}" value="{{ rec.end_time if rec and rec.end_time else '18:00' }}">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Break (min)</label>
+        <input type="number" name="break_{{ emp.id }}" value="{{ rec.break_minutes if rec and rec.break_minutes is not none else 60 }}" min="0" step="5">
+      </div>
+    </div>
+
+    {% if rec and rec.status == 'present' %}
+    <div class="ot-badge">Worked <strong>{{ rec.worked_hours }}h</strong> · Normal {{ rec.normal_hours }}h · Overtime <strong>{{ rec.overtime_hours }}h</strong></div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <button type="submit" class="btn btn-primary btn-block">Save attendance</button>
+</form>
+
+{% endif %}
+
+<script>
+function setStatus(empId, status) {
+  document.getElementById('status_input_' + empId).value = status;
+  var group = document.querySelector('[data-emp-group="' + empId + '"]');
+  group.querySelectorAll('.status-btn').forEach(function(btn) {
+    btn.className = 'status-btn';
+    if (btn.dataset.status === status) {
+      btn.classList.add('sel-' + status);
+    }
+  });
+  var timeRow = document.getElementById('time_row_' + empId);
+  if (status === 'present') {
+    timeRow.classList.remove('hidden');
+  } else {
+    timeRow.classList.add('hidden');
+  }
+}
+
+function markAll(status) {
+  document.querySelectorAll('[data-emp]').forEach(function(row) {
+    var empId = row.dataset.emp;
+    setStatus(empId, status);
+  });
+}
+</script>
+
+{% endblock %}
