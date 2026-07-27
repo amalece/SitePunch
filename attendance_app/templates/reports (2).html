@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+
+<div class="page-title">Reports</div>
+<div class="page-sub">Attendance and overtime summary — filter by date, site, employee, designation, or status.</div>
+
+<form method="GET" action="{{ url_for('reports') }}" class="filter-bar">
+  <div class="field">
+    <label for="start_date">From</label>
+    <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+  </div>
+  <div class="field">
+    <label for="end_date">To</label>
+    <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+  </div>
+  <div class="field">
+    <label for="site_id">Site</label>
+    <select id="site_id" name="site_id">
+      <option value="">All sites</option>
+      {% for s in sites %}
+      <option value="{{ s.id }}" {{ 'selected' if s.id == selected_site_id }}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="employee_id">Employee</label>
+    <select id="employee_id" name="employee_id">
+      <option value="">All employees</option>
+      {% for e in employees %}
+      <option value="{{ e.id }}" {{ 'selected' if e.id == selected_employee_id }}>
+        {{ (e.employee_code + ' — ') if e.employee_code else '' }}{{ e.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="designation">Designation</label>
+    <select id="designation" name="designation">
+      <option value="">All designations</option>
+      {% for d in designations %}
+      <option value="{{ d }}" {{ 'selected' if d == selected_designation }}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">All statuses</option>
+      {% for value, label in status_options %}
+      <option value="{{ value }}" {{ 'selected' if value == selected_status }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Apply filters</button>
+  {% if selected_site_id or selected_employee_id or selected_designation or selected_status %}
+  <a href="{{ url_for('reports', start_date=start_date, end_date=end_date) }}" class="btn btn-sm">Clear filters</a>
+  {% endif %}
+</form>
+
+<div class="card">
+  <div class="section-head">
+    <div class="card-title" style="margin-bottom:0;">Summary by employee</div>
+    <div style="display:flex; gap:8px;">
+      <a class="btn btn-sm" href="{{ url_for('reports_export_pdf', start_date=start_date, end_date=end_date, site_id=selected_site_id, employee_id=selected_employee_id, designation=selected_designation, status=selected_status) }}" style="background:var(--brand-soft); color:var(--brand); border-color:var(--brand-soft);">Export to PDF</a>
+      <a class="btn btn-sm" href="{{ url_for('reports_export', start_date=start_date, end_date=end_date, site_id=selected_site_id, employee_id=selected_employee_id, designation=selected_designation, status=selected_status) }}">Export to Excel</a>
+    </div>
+  </div>
+  {% if summary %}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Employee ID</th><th>Employee</th><th>Present</th><th>Absent</th><th>Leave</th><th>Normal hrs</th><th>Overtime hrs</th></tr>
+      </thead>
+      <tbody>
+      {% for emp_id, s in summary.items() %}
+        <tr>
+          <td class="mono">{{ s.employee_code or '—' }}</td>
+          <td>{{ s.name }}</td>
+          <td class="mono">{{ s.present_days }}</td>
+          <td class="mono">{{ s.absent_days }}</td>
+          <td class="mono">{{ s.leave_days }}</td>
+          <td class="mono">{{ s.normal_hours }}</td>
+          <td class="mono" style="color:var(--accent);">{{ s.overtime_hours }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">&#128202;</div>
+    No attendance recorded for these filters.
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Daily entries ({{ records|length }})</div>
+  {% if records %}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Employee ID</th><th>Date</th><th>Employee</th><th>Site</th><th>Status</th><th>Start</th><th>End</th><th>Worked</th><th>Normal</th><th>OT</th></tr>
+      </thead>
+      <tbody>
+      {% for r in records %}
+        <tr>
+          <td class="mono">{{ r.employee.employee_code or '—' }}</td>
+          <td class="mono">{{ r.date.isoformat() }}</td>
+          <td>{{ r.employee.name }}</td>
+          <td>{{ r.employee.site.name if r.employee.site else '—' }}</td>
+          <td><span class="pill pill-{{ r.status }}">{{ r.status.replace('_',' ') }}</span></td>
+          <td class="mono">{{ r.start_time or '—' }}</td>
+          <td class="mono">{{ r.end_time or '—' }}</td>
+          <td class="mono">{{ r.worked_hours or 0 }}</td>
+          <td class="mono">{{ r.normal_hours or 0 }}</td>
+          <td class="mono" style="color:var(--accent);">{{ r.overtime_hours or 0 }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">No records to show.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

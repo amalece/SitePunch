@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="page-title">Today</div>
+<div class="page-sub">{{ today.strftime('%A, %d %B %Y') }}</div>
+
+<div class="stat-grid">
+  <div class="stat ok">
+    <div class="num mono">{{ present }}</div>
+    <div class="label">Present</div>
+  </div>
+  <div class="stat bad">
+    <div class="num mono">{{ absent }}</div>
+    <div class="label">Absent</div>
+  </div>
+  <div class="stat warn">
+    <div class="num mono">{{ on_leave }}</div>
+    <div class="label">On leave</div>
+  </div>
+  <div class="stat">
+    <div class="num mono">{{ not_entered }}</div>
+    <div class="label">Not entered</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Total overtime today</div>
+  <div class="num mono" style="font-size:26px;color:var(--accent);">{{ total_ot }} hrs</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Manpower by site</div>
+  {% if site_summary %}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Site</th><th>Present</th><th>Assigned</th></tr></thead>
+      <tbody>
+      {% for s in site_summary %}
+        <tr>
+          <td>{{ s.name }}</td>
+          <td class="mono">{{ s.present }}</td>
+          <td class="mono">{{ s.total }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">&#8962;</div>
+    No sites set up yet. <a href="{{ url_for('sites') }}" style="color:var(--accent);">Add a site</a> to get started.
+  </div>
+  {% endif %}
+</div>
+
+<a href="{{ url_for('attendance') }}" class="btn btn-primary btn-block">Go to today's attendance</a>
+
+{% endblock %}
